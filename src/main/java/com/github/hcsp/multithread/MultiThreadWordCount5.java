@@ -43,7 +43,7 @@ public class MultiThreadWordCount5 {
                 new File("src/main/java/com/github/hcsp/multithread/2.txt"),
                 new File("src/main/java/com/github/hcsp/multithread/3.txt")
         );
-        //ExecutorService threadPool = Executors.newFixedThreadPool(files.size());
+//        ExecutorService threadPool = Executors.newFixedThreadPool(files.size());
         ExecutorService threadPool = new ThreadPoolExecutor(files.size(), files.size(),
                 120, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
                 (runnable) -> {
@@ -51,10 +51,16 @@ public class MultiThreadWordCount5 {
                     factory.setDaemon(true);
                     return factory;
                 });
-        Map<String, Integer> resultMap = new HashMap<>();
+        Map<String, Integer> resultMap = new ConcurrentHashMap<>();
         for (File file : files) {
             try {
-                resultMap = merge(resultMap, threadPool.submit(() -> count(file)).get());
+                Map<String, Integer> finalResultMap = resultMap;
+                Callable<Map<String, Integer>> callable = () -> {
+                    System.out.println(Thread.currentThread().getName());
+                    return merge(finalResultMap, count(file));
+                };
+                Future<Map<String, Integer>> future = threadPool.submit(callable);
+                resultMap = future.get();
             } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();
             }
